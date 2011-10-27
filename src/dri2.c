@@ -43,8 +43,6 @@
 #include <X11/extensions/dri2proto.h>
 #include <drm.h>
 #include <xf86drm.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
 #include <xorg/list.h>
 #include "X11/extensions/dri2.h"
 
