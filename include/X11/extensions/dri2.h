@@ -67,8 +67,8 @@ extern Bool
 DRI2QueryVersion(Display * display, int *major, int *minor);
 
 extern Bool
-DRI2Connect(Display * display, XID window,
-            char **driverName, char **deviceName);
+DRI2Connect(Display * dpy, XID window,
+		int driverType, char **driverName, char **deviceName);
 
 extern Bool
 DRI2Authenticate(Display * display, XID window, drm_magic_t magic);

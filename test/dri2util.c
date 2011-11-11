@@ -79,7 +79,7 @@ static const DRI2EventOps ops = {
 		.EventToWire = EventToWire,
 };
 
-int dri2_connect(Display *dpy, char **driver)
+int dri2_connect(Display *dpy, int driverType, char **driver)
 {
 	int eventBase, errorBase, major, minor;
 	char *device;
@@ -108,7 +108,7 @@ int dri2_connect(Display *dpy, char **driver)
 
 	root = RootWindow(dpy, DefaultScreen(dpy));
 
-	if (!DRI2Connect(dpy, root, driver, &device)) {
+	if (!DRI2Connect(dpy, root, driverType, driver, &device)) {
 		ERROR_MSG("DRI2Connect failed");
 		return -1;
 	}

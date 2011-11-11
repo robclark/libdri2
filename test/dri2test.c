@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 	XMapWindow(dpy, win);
 	XFlush(dpy);
 
-	if ((fd = dri2_connect(dpy, &driver)) < 0) {
+	if ((fd = dri2_connect(dpy, DRI2DriverDRI, &driver)) < 0) {
 		return -1;
 	}
 

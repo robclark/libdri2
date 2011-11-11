@@ -243,7 +243,8 @@ DRI2QueryVersion(Display * dpy, int *major, int *minor)
 }
 
 Bool
-DRI2Connect(Display * dpy, XID window, char **driverName, char **deviceName)
+DRI2Connect(Display * dpy, XID window,
+		int driverType, char **driverName, char **deviceName)
 {
    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
    xDRI2ConnectReply rep;
@@ -256,7 +257,7 @@ DRI2Connect(Display * dpy, XID window, char **driverName, char **deviceName)
    req->reqType = info->codes->major_opcode;
    req->dri2ReqType = X_DRI2Connect;
    req->window = window;
-   req->driverType = DRI2DriverDRI;
+   req->driverType = driverType;
    if (!_XReply(dpy, (xReply *) & rep, 0, xFalse)) {
       UnlockDisplay(dpy);
       SyncHandle();

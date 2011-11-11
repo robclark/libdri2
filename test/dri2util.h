@@ -74,7 +74,7 @@ typedef struct {
 	void   (*fini)(void *hdl);
 } Backend;
 
-int dri2_connect(Display *dpy, char **driver);
+int dri2_connect(Display *dpy, int driverType, char **driver);
 Backend * get_backend(const char *driver);
 
 #endif /* _DRI2TEST_H_ */
