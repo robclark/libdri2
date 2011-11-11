@@ -30,41 +30,56 @@
  *   Rob Clark (rob@ti.com)
  */
 
-#ifndef _DRI2TEST_H_
-#define _DRI2TEST_H_
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <xf86drm.h>
-#include <X11/Xlib.h>
-#include <X11/Xmd.h>
-#include <X11/extensions/dri2proto.h>
-#include "X11/extensions/dri2.h"
+#include "dri2util.h"
 
-#define MSG(fmt, ...) \
-		do { fprintf(stderr, fmt "\n", ##__VA_ARGS__); } while (0)
-#define ERROR_MSG(fmt, ...) \
-		do { fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__); } while (0)
+#include <nouveau_bo.h>
+#include <nouveau_drmif.h>
 
+struct nouveau_device *dev;
 
-#define WIDTH  500
-#define HEIGHT 500
-#define NFRAMES 300
+static void setup(int fd)
+{
+	int ret = nouveau_device_open_existing(&dev, 0, fd, 0);
+	if (ret) {
+		ERROR_MSG("nouveau_device_open_existing failed: %d", ret);
+	}
+}
 
-typedef struct {
-	DRI2Buffer *dri2buf;
-	void *hdl;
-} Buffer;
+static void * init(DRI2Buffer *dri2buf)
+{
+	struct nouveau_bo *bo = NULL;
+	int ret = nouveau_bo_handle_ref(dev, dri2buf->name, &bo);
+	if (ret) {
+		ERROR_MSG("nouveau_bo_handle_ref failed: %d", ret);
+		return NULL;
+	}
+	return bo;
+}
 
-typedef struct {
-	void   (*setup)(int fd);
-	void * (*init)(DRI2Buffer *dri2buf);
-	char * (*prep)(void *hdl);
-	void   (*fini)(void *hdl);
-} Backend;
+static char * prep(void *hdl)
+{
+	struct nouveau_bo *bo = hdl;
+	int ret = nouveau_bo_map(bo, NOUVEAU_BO_RDWR);
+	if (ret) {
+		ERROR_MSG("nouveau_bo_map failed: %d", ret);
+		return NULL;
+	}
+	return bo->map;
+}
 
-#endif /* _DRI2TEST_H_ */
+static void fini(void *hdl)
+{
+	struct nouveau_bo *bo = hdl;
+	nouveau_bo_unmap(bo);
+}
+
+Backend nouveau_backend = {
+		.setup = setup,
+		.init = init,
+		.prep = prep,
+		.fini = fini,
+};

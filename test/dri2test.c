@@ -34,113 +34,11 @@
 #  include "config.h"
 #endif
 
-#include "dri2test.h"
+#include "dri2util.h"
 
-static Bool WireToEvent(Display *dpy, XExtDisplayInfo *info,
-		XEvent *event, xEvent *wire)
-{
-	switch ((wire->u.u.type & 0x7f) - info->codes->first_event) {
-
-	case DRI2_BufferSwapComplete:
-	{
-//		xDRI2BufferSwapComplete *awire = (xDRI2BufferSwapComplete *)wire;
-		MSG("BufferSwapComplete");
-		return True;
-	}
-	case DRI2_InvalidateBuffers:
-	{
-//		xDRI2InvalidateBuffers *awire = (xDRI2InvalidateBuffers *)wire;
-		MSG("InvalidateBuffers");
-//		dri2InvalidateBuffers(dpy, awire->drawable);
-		return False;
-	}
-	default:
-		/* client doesn't support server event */
-		break;
-	}
-
-	return False;
-}
-
-static Status EventToWire(Display *dpy, XExtDisplayInfo *info,
-		XEvent *event, xEvent *wire)
-{
-   switch (event->type) {
-   default:
-      /* client doesn't support server event */
-      break;
-   }
-
-   return Success;
-}
-
-static const DRI2EventOps ops = {
-		.WireToEvent = WireToEvent,
-		.EventToWire = EventToWire,
-};
-
-static int dri2_connect(Display *dpy, char **driver)
-{
-	int eventBase, errorBase, major, minor;
-	char *device;
-	drm_magic_t magic;
-	Window root;
-	int fd;
-
-	if (!DRI2InitDisplay(dpy, &ops)) {
-		ERROR_MSG("DRI2InitDisplay failed");
-		return -1;
-	}
-
-	if (!DRI2QueryExtension(dpy, &eventBase, &errorBase)) {
-		ERROR_MSG("DRI2QueryExtension failed");
-		return -1;
-	}
-
-	MSG("DRI2QueryExtension: eventBase=%d, errorBase=%d", eventBase, errorBase);
-
-	if (!DRI2QueryVersion(dpy, &major, &minor)) {
-		ERROR_MSG("DRI2QueryVersion failed");
-		return -1;
-	}
-
-	MSG("DRI2QueryVersion: major=%d, minor=%d", major, minor);
-
-	root = RootWindow(dpy, DefaultScreen(dpy));
-
-	if (!DRI2Connect(dpy, root, driver, &device)) {
-		ERROR_MSG("DRI2Connect failed");
-		return -1;
-	}
-
-	MSG("DRI2Connect: driver=%s, device=%s", *driver, device);
-
-	fd = open(device, O_RDWR);
-	if (fd < 0) {
-		ERROR_MSG("open failed");
-		return fd;
-	}
-
-	if (drmGetMagic(fd, &magic)) {
-		ERROR_MSG("drmGetMagic failed");
-		return -1;
-	}
-
-	if (!DRI2Authenticate(dpy, root, magic)) {
-		ERROR_MSG("DRI2Authenticate failed");
-		return -1;
-	}
-
-	return fd;
-}
-
-#ifdef HAVE_NOUVEAU
-extern Backend nouveau_backend;
-#endif
-
-#ifdef HAVE_OMAP
-extern Backend omap_backend;
-#endif
+#define WIDTH  500
+#define HEIGHT 500
+#define NFRAMES 300
 
 /* stolen from modetest.c */
 static void fill(char *virtual, int n, int width, int height, int stride)
@@ -183,20 +81,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-#ifdef HAVE_NOUVEAU
-	if (!strcmp(driver, "nouveau")) {
-		backend = &nouveau_backend;
-	}
-#endif
-
-#ifdef HAVE_OMAP
-	if (!strcmp(driver, "omap")) {
-		backend = &omap_backend;
-	}
-#endif
-
+	backend = get_backend(driver);
 	if (!backend) {
-		ERROR_MSG("no suitable backend DRM driver found");
 		return -1;
 	}
 

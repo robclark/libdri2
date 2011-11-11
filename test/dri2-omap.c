@@ -34,7 +34,7 @@
 #  include "config.h"
 #endif
 
-#include "dri2test.h"
+#include "dri2util.h"
 
 #include <omap_drm.h>
 #include <omap_drmif.h>
