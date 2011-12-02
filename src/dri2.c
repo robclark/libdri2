@@ -43,8 +43,6 @@
 #include <X11/extensions/dri2proto.h>
 #include <drm.h>
 #include <xf86drm.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
 #include <xorg/list.h>
 #include "X11/extensions/dri2.h"
 
@@ -137,8 +135,6 @@ static XEXT_GENERATE_FIND_DISPLAY (DRI2FindDisplay,
                                    dri2ExtensionName,
                                    &dri2ExtensionHooks,
                                    0, NULL)
-
-#include <GL/glx.h>
 
 static Bool
 DRI2WireToEvent(Display *dpy, XEvent *event, xEvent *wire)
