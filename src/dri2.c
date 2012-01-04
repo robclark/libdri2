@@ -43,7 +43,7 @@
 #include <X11/extensions/dri2proto.h>
 #include <drm.h>
 #include <xf86drm.h>
-#include <xorg/list.h>
+#include "list.h"
 #include "X11/extensions/dri2.h"
 
 /* Allow the build to work with an older versions of dri2proto.h and
