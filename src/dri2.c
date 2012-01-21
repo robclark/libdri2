@@ -69,6 +69,7 @@ typedef struct {
 	struct list list;
 	Display *dpy;
 	const DRI2EventOps *ops;
+	int major, minor;
 } DRI2Display;
 
 static DRI2Display * dpy2dri(Display *dpy)
@@ -199,6 +200,7 @@ Bool
 DRI2QueryVersion(Display * dpy, int *major, int *minor)
 {
    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+   DRI2Display *dri2dpy = dpy2dri(dpy);
    xDRI2QueryVersionReply rep;
    xDRI2QueryVersionReq *req;
    int i, nevents;
@@ -216,8 +218,8 @@ DRI2QueryVersion(Display * dpy, int *major, int *minor)
       SyncHandle();
       return False;
    }
-   *major = rep.majorVersion;
-   *minor = rep.minorVersion;
+   dri2dpy->major = *major = rep.majorVersion;
+   dri2dpy->minor = *minor = rep.minorVersion;
    UnlockDisplay(dpy);
    SyncHandle();
 
@@ -365,7 +367,7 @@ DRI2DestroyDrawable(Display * dpy, XID drawable)
 
 static DRI2Buffer *
 getbuffers(Display *dpy, XID drawable, int *width, int *height,
-               unsigned int *attachments, int count, int *outCount, int dri2ReqType)
+		unsigned int *attachments, int count, int *outCount, int dri2ReqType)
 {
    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
    xDRI2GetBuffersReply rep;
@@ -429,8 +431,8 @@ DRI2GetBuffers(Display * dpy, XID drawable,
                int *width, int *height,
                unsigned int *attachments, int count, int *outCount)
 {
-       return getbuffers(dpy, drawable, width, height, attachments,
-                       count, outCount, X_DRI2GetBuffers);
+	return getbuffers(dpy, drawable, width, height, attachments,
+			count, outCount, X_DRI2GetBuffers);
 }
 
 DRI2Buffer *
@@ -438,10 +440,80 @@ DRI2GetBuffersWithFormat(Display * dpy, XID drawable,
                          int *width, int *height,
                          unsigned int *attachments, int count, int *outCount)
 {
-       return getbuffers(dpy, drawable, width, height, attachments,
-                       count, outCount, X_DRI2GetBuffersWithFormat);
+	return getbuffers(dpy, drawable, width, height, attachments,
+			count, outCount, X_DRI2GetBuffersWithFormat);
 }
 
+#ifdef X_DRI2GetBuffersVid
+DRI2Buffer *
+DRI2GetBuffersVid(Display * dpy, XID drawable,
+               int width, int height,
+               unsigned int *attachments, int count, int *outCount)
+{
+	XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+	DRI2Display *dri2dpy = dpy2dri(dpy);
+	xDRI2GetBuffersReply rep;
+	xDRI2GetBuffersVidReq *req;
+	DRI2Buffer *buffers;
+	xDRI2Buffer repBuffer;
+	CARD32 *p;
+	int i, nattachments = 2 * count;
+
+	XextCheckExtension(dpy, info, dri2ExtensionName, False);
+
+    if (dri2dpy->minor < 4)
+	return False;
+
+	LockDisplay(dpy);
+	GetReqExtra(DRI2GetBuffersVid, nattachments * 4, req);
+	req->reqType = info->codes->major_opcode;
+	req->dri2ReqType = X_DRI2GetBuffersVid;
+	req->drawable = drawable;
+	req->width = width;
+	req->height = height;
+	req->count = count;
+	p = (CARD32 *) & req[1];
+	for (i = 0; i < nattachments; i++)
+		p[i] = attachments[i];
+
+	if (!_XReply(dpy, (xReply *) & rep, 0, xFalse)) {
+		UnlockDisplay(dpy);
+		SyncHandle();
+		return NULL;
+	}
+
+	*outCount = rep.count;
+
+	buffers = calloc(rep.count, sizeof buffers[0]);
+	for (i = 0; i < rep.count; i++) {
+		CARD32 n, j;
+		_XReadPad(dpy, (char *) &repBuffer, sizeof repBuffer);
+		if (buffers) {
+			buffers[i].attachment = repBuffer.attachment;
+			buffers[i].names[0] = repBuffer.name;
+			buffers[i].pitch[0] = repBuffer.pitch;
+			buffers[i].cpp = repBuffer.cpp;
+			buffers[i].flags = repBuffer.flags;
+		}
+
+		_XReadPad(dpy, (char *) &n, sizeof n);
+		for (j = 0; j < n; j++) {
+			CARD32 name, pitch;
+			_XReadPad(dpy, (char *) &name, 4);
+			_XReadPad(dpy, (char *) &pitch, 4);
+			if (buffers) {
+				buffers[i].names[j+1] = name;
+				buffers[i].pitch[j+1] = pitch;
+			}
+		}
+	}
+
+	UnlockDisplay(dpy);
+	SyncHandle();
+
+	return buffers;
+}
+#endif
 
 void
 DRI2CopyRegion(Display * dpy, XID drawable, XserverRegion region,
@@ -502,6 +574,45 @@ void DRI2SwapBuffers(Display *dpy, XID drawable, CARD64 target_msc,
     req->dri2ReqType = X_DRI2SwapBuffers;
     req->drawable = drawable;
     load_swap_req(req, target_msc, divisor, remainder);
+
+    _XReply(dpy, (xReply *)&rep, 0, xFalse);
+
+    *count = vals_to_card64(rep.swap_lo, rep.swap_hi);
+
+    UnlockDisplay(dpy);
+    SyncHandle();
+}
+#endif
+
+#ifdef X_DRI2SwapBuffersVid
+void DRI2SwapBuffersVid(Display *dpy, XID drawable, CARD64 target_msc,
+		     CARD64 divisor, CARD64 remainder, CARD64 *count,
+		     unsigned int source, BoxPtr b)
+{
+    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+    DRI2Display *dri2dpy = dpy2dri(dpy);
+    xDRI2SwapBuffersVidReq *req;
+    xDRI2SwapBuffersReply rep;
+
+    XextSimpleCheckExtension (dpy, info, dri2ExtensionName);
+
+    if (dri2dpy->minor < 4)
+	return;
+
+    LockDisplay(dpy);
+    GetReq(DRI2SwapBuffersVid, req);
+    req->reqType = info->codes->major_opcode;
+    req->dri2ReqType = X_DRI2SwapBuffersVid;
+    req->drawable = drawable;
+
+    /* first part of message is same as original DRI2SwapBuffers.. */
+    load_swap_req((xDRI2SwapBuffersReq *)req, target_msc, divisor, remainder);
+
+    req->source = source;
+    req->x1 = b->x1;
+    req->y1 = b->y1;
+    req->x2 = b->x2;
+    req->y2 = b->y2;
 
     _XReply(dpy, (xReply *)&rep, 0, xFalse);
 
@@ -648,5 +759,122 @@ void DRI2SwapInterval(Display *dpy, XID drawable, int interval)
     req->interval = interval;
     UnlockDisplay(dpy);
     SyncHandle();
+}
+#endif
+
+#ifdef X_DRI2SetAttribute
+/* length in multiple of CARD32's */
+void
+DRI2SetAttribute(Display * dpy, XID drawable, Atom attribute,
+		int len, const CARD32 *val)
+{
+    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+    DRI2Display *dri2dpy = dpy2dri(dpy);
+    xDRI2SetAttributeReq *req;
+
+    XextSimpleCheckExtension (dpy, info, dri2ExtensionName);
+
+    if (dri2dpy->minor < 4)
+	return;
+
+    LockDisplay(dpy);
+    GetReqExtra(DRI2SetAttribute, len * 4, req);
+    req->reqType = info->codes->major_opcode;
+    req->dri2ReqType = X_DRI2SetAttribute;
+    req->drawable = drawable;
+    req->attribute = attribute;
+    memcpy(&req[1], val, len * 4);
+    UnlockDisplay(dpy);
+    SyncHandle();
+}
+#endif
+
+#ifdef X_DRI2GetAttribute
+/* returned attribute should be free'd by caller.. length in multiple of
+ * CARD32's
+ */
+Bool
+DRI2GetAttribute(Display * dpy, XID drawable, Atom attribute,
+		int *len, CARD32 **val)
+{
+    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+    DRI2Display *dri2dpy = dpy2dri(dpy);
+    xDRI2GetAttributeReq *req;
+    xDRI2GetAttributeReply rep;
+
+    XextCheckExtension (dpy, info, dri2ExtensionName, False);
+
+    if (dri2dpy->minor < 4)
+	return False;
+
+    LockDisplay(dpy);
+    GetReq(DRI2GetAttribute, req);
+    req->reqType = info->codes->major_opcode;
+    req->dri2ReqType = X_DRI2GetAttribute;
+    req->drawable = drawable;
+    req->attribute = attribute;
+
+    if (!_XReply(dpy, (xReply *)&rep, 0, xFalse)) {
+	UnlockDisplay(dpy);
+	SyncHandle();
+	return False;
+    }
+
+    *len = rep.length;
+    *val = malloc(rep.length * 4);
+
+    _XReadPad(dpy, (char *) *val, rep.length * 4);
+
+    UnlockDisplay(dpy);
+    SyncHandle();
+
+    return True;
+}
+#endif
+
+#ifdef X_DRI2GetFormats
+/* returned formats should be freed by caller */
+Bool
+DRI2GetFormats(Display * dpy, XID drawable, unsigned int *pnformats,
+		unsigned int **pformats)
+{
+    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
+    DRI2Display *dri2dpy = dpy2dri(dpy);
+    xDRI2GetFormatsReq *req;
+    xDRI2GetFormatsReply rep;
+    unsigned int nformats, *formats;
+    int i;
+
+    XextCheckExtension (dpy, info, dri2ExtensionName, False);
+
+    if (dri2dpy->minor < 4)
+	return False;
+
+    LockDisplay(dpy);
+    GetReq(DRI2GetFormats, req);
+    req->reqType = info->codes->major_opcode;
+    req->dri2ReqType = X_DRI2GetFormats;
+    req->drawable = drawable;
+
+    if (!_XReply(dpy, (xReply *)&rep, 0, xFalse)) {
+	UnlockDisplay(dpy);
+	SyncHandle();
+	return False;
+    }
+
+    nformats = rep.length * 4 / sizeof(*formats);
+    formats = malloc(nformats * sizeof(*formats));
+
+    for (i = 0; i < nformats; i++) {
+	_XReadPad(dpy, (char *) &formats[i], sizeof(formats[i]));
+    }
+
+    UnlockDisplay(dpy);
+    SyncHandle();
+
+    *pnformats = nformats;
+    *pformats = formats;
+
+    return True;
 }
 #endif

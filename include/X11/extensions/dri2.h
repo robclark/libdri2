@@ -38,6 +38,7 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/extutil.h>
 #include <X11/extensions/dri2tokens.h>
+#include <X11/Xregion.h>
 #include <drm.h>
 
 typedef struct
@@ -95,6 +96,16 @@ DRI2GetBuffersWithFormat(Display * dpy, XID drawable,
                          unsigned int *attachments,
                          int count, int *outCount);
 
+/**
+ * \note
+ * This function is only supported with DRI2 version 1.4 or later.
+ * The 'attachments' array is same as with DRI2GetBuffersWithFormat()
+ */
+DRI2Buffer *
+DRI2GetBuffersVid(Display * dpy, XID drawable,
+               int width, int height,
+               unsigned int *attachments, int count, int *outCount);
+
 extern void
 DRI2CopyRegion(Display * dpy, XID drawable,
                XserverRegion region,
@@ -103,6 +114,15 @@ DRI2CopyRegion(Display * dpy, XID drawable,
 extern void
 DRI2SwapBuffers(Display *dpy, XID drawable, CARD64 target_msc, CARD64 divisor,
 		CARD64 remainder, CARD64 *count);
+
+/**
+ * \note
+ * This function is only supported with DRI2 version 1.4 or later.
+ */
+extern void
+DRI2SwapBuffersVid(Display *dpy, XID drawable, CARD64 target_msc,
+		CARD64 divisor, CARD64 remainder, CARD64 *count,
+		unsigned int source, BoxPtr b);
 
 extern Bool
 DRI2GetMSC(Display *dpy, XID drawable, CARD64 *ust, CARD64 *msc, CARD64 *sbc);
@@ -117,5 +137,33 @@ DRI2WaitSBC(Display *dpy, XID drawable, CARD64 target_sbc, CARD64 *ust,
 
 extern void
 DRI2SwapInterval(Display *dpy, XID drawable, int interval);
+
+/**
+ * \note
+ * This function is only supported with DRI2 version 1.4 or later.
+ * length in multiple of CARD32's
+ */
+extern void
+DRI2SetAttribute(Display * dpy, XID drawable, Atom attribute,
+		int len, const CARD32 *val);
+
+/**
+ * \note
+ * This function is only supported with DRI2 version 1.4 or later.
+ * The returned attribute should be free'd by caller.. length in
+ * multiple of CARD32's
+ */
+extern Bool
+DRI2GetAttribute(Display * dpy, XID drawable, Atom attribute,
+		int *len, CARD32 **val);
+
+/**
+ * \note
+ * This function is only supported with DRI2 version 1.4 or later.
+ * returned formats should be freed by caller
+ */
+extern Bool
+DRI2GetFormats(Display * dpy, XID drawable, unsigned int *pnformats,
+		unsigned int **pformats);
 
 #endif

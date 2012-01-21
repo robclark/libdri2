@@ -43,8 +43,16 @@ endif
 
 if ENABLE_TEST
 SUBDIRS            += test
-bin_PROGRAMS        = dri2test
-dri2test_SOURCES    = 
-dri2test_LDFLAGS    = -no-undefined
-dri2test_LDADD      = test/libdri2test.la src/libdri2.la @DRI2_LIBS@
+bin_PROGRAMS        = dri2test dri2videotest
+
+COMMON_LDFLAGS      = -no-undefined
+COMMON_LDADD        = src/libdri2.la @DRI2_LIBS@
+
+dri2test_SOURCES    =
+dri2test_LDFLAGS    = $(COMMON_LDFLAGS)
+dri2test_LDADD      = test/libdri2test.la $(COMMON_LDADD)
+
+dri2videotest_SOURCES =
+dri2videotest_LDFLAGS = $(COMMON_LDFLAGS)
+dri2videotest_LDADD   = test/libdri2videotest.la $(COMMON_LDADD)
 endif

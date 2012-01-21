@@ -1,4 +1,4 @@
-noinst_LTLIBRARIES = libdri2test.la
+noinst_LTLIBRARIES = libdri2test.la libdri2videotest.la
 
 COMMON_SOURCES = dri2util.c
 COMMON_LIBADD  = @DRI2_LIBS@ 
@@ -19,3 +19,7 @@ endif
 libdri2test_la_SOURCES = dri2test.c $(COMMON_SOURCES)
 libdri2test_la_LIBADD = $(COMMON_LIBADD)
 libdri2test_la_CFLAGS = $(COMMON_CFLAGS)
+
+libdri2videotest_la_SOURCES = dri2videotest.c $(COMMON_SOURCES)
+libdri2videotest_la_LIBADD = $(COMMON_LIBADD)
+libdri2videotest_la_CFLAGS = $(COMMON_CFLAGS)
