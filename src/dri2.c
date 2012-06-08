@@ -218,8 +218,15 @@ DRI2QueryVersion(Display * dpy, int *major, int *minor)
       SyncHandle();
       return False;
    }
-   dri2dpy->major = *major = rep.majorVersion;
-   dri2dpy->minor = *minor = rep.minorVersion;
+
+   *major = rep.majorVersion;
+   *minor = rep.minorVersion;
+
+   if (dri2dpy) {
+	   dri2dpy->major = rep.majorVersion;
+	   dri2dpy->minor = rep.minorVersion;
+   }
+
    UnlockDisplay(dpy);
    SyncHandle();
 
