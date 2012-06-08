@@ -46,9 +46,9 @@ static void setup(int fd)
 	dev = omap_device_new(fd);
 }
 
-static void * init(DRI2Buffer *dri2buf)
+static void * init(DRI2Buffer *dri2buf, int plane)
 {
-	return omap_bo_from_name(dev, dri2buf->names[0]);
+	return omap_bo_from_name(dev, dri2buf->names[plane]);
 }
 
 static char * prep(void *hdl)

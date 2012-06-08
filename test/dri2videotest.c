@@ -214,7 +214,13 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < nbufs; i++) {
 		bufs[i].dri2buf = &dri2bufs[i];
-		bufs[i].hdl = backend->init(bufs[i].dri2buf);
+		bufs[i].hdls[0] = backend->init(bufs[i].dri2buf, 0);
+		if (format == FOURCC_STR("I420")) {
+			bufs[i].hdls[1] = backend->init(bufs[i].dri2buf, 1);
+			bufs[i].hdls[2] = backend->init(bufs[i].dri2buf, 2);
+		} else if (format == FOURCC_STR("NV12")) {
+			bufs[i].hdls[1] = backend->init(bufs[i].dri2buf, 1);
+		}
 	}
 
 	for (i = 0; i < NFRAMES; i++) {
@@ -231,28 +237,26 @@ int main(int argc, char **argv)
 
 		Buffer *buf = &bufs[i % nbufs];
 		int pitch = buf->dri2buf->pitch[0];
-		unsigned char *ptr = backend->prep(buf->hdl);
+		unsigned char *ptr = backend->prep(buf->hdls[0]);
 		if (format == FOURCC_STR("I420")) {
-#if 0
 			unsigned char *y = ptr;
-			// XXX deal with multiple bo case
-			unsigned char *u = y + (VID_HEIGHT * pitch);
-			unsigned char *v = u + (VID_HEIGHT * pitch) / 4;
+			unsigned char *u = backend->prep(buf->hdls[1]);
+			unsigned char *v = backend->prep(buf->hdls[2]);
 			fill420(y, u, v, 1, i, VID_WIDTH, VID_HEIGHT, pitch);
-#else
-			/* I think the nouveau shader actually expects NV12... */
+			backend->fini(buf->hdls[2]);
+			backend->fini(buf->hdls[1]);
+		} else if (format == FOURCC_STR("NV12")) {
 			unsigned char *y = ptr;
-			// XXX deal with multiple bo case
-			unsigned char *u = y + (VID_HEIGHT * pitch);
+			unsigned char *u = backend->prep(buf->hdls[1]);
 			unsigned char *v = u + 1;
 			fill420(y, u, v, 2, i, VID_WIDTH, VID_HEIGHT, pitch);
-#endif
+			backend->fini(buf->hdls[1]);
 		} else if (format == FOURCC_STR("YUY2")) {
 			fill422(ptr, i, VID_WIDTH, VID_HEIGHT, pitch);
 		} else if (format == FOURCC_STR("RGB4")) {
 			fill(ptr, i, VID_WIDTH, VID_HEIGHT, pitch);
 		}
-		backend->fini(buf->hdl);
+		backend->fini(buf->hdls[0]);
 		DRI2SwapBuffersVid(dpy, win, 0, 0, 0, &count, (i % nbufs) + 1, &b);
 		MSG("DRI2SwapBuffersVid: count=%lu", count);
 		if (i > 0) {

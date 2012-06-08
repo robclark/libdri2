@@ -49,10 +49,10 @@ static void setup(int fd)
 	}
 }
 
-static void * init(DRI2Buffer *dri2buf)
+static void * init(DRI2Buffer *dri2buf, int plane)
 {
 	struct nouveau_bo *bo = NULL;
-	int ret = nouveau_bo_handle_ref(dev, dri2buf->names[0], &bo);
+	int ret = nouveau_bo_handle_ref(dev, dri2buf->names[plane], &bo);
 	if (ret) {
 		ERROR_MSG("nouveau_bo_handle_ref failed: %d", ret);
 		return NULL;

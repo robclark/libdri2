@@ -64,12 +64,12 @@ static inline void print_hex(int len, const unsigned char *val)
 
 typedef struct {
 	DRI2Buffer *dri2buf;
-	void *hdl;
+	void *hdls[3];
 } Buffer;
 
 typedef struct {
 	void   (*setup)(int fd);
-	void * (*init)(DRI2Buffer *dri2buf);
+	void * (*init)(DRI2Buffer *dri2buf, int plane);
 	char * (*prep)(void *hdl);
 	void   (*fini)(void *hdl);
 } Backend;

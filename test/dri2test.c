@@ -102,15 +102,15 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < nbufs; i++) {
 		bufs[i].dri2buf = &dri2bufs[i];
-		bufs[i].hdl = backend->init(bufs[i].dri2buf);
+		bufs[i].hdls[0] = backend->init(bufs[i].dri2buf, 0);
 	}
 
 	for (i = 0; i < NFRAMES; i++) {
 		CARD64 count;
 
-		char *buf = backend->prep(bufs[i % nbufs].hdl);
+		char *buf = backend->prep(bufs[i % nbufs].hdls[0]);
 		fill(buf, i, w, h, bufs[i % nbufs].dri2buf->pitch[0]);
-		backend->fini(bufs[i % nbufs].hdl);
+		backend->fini(bufs[i % nbufs].hdls[0]);
 		DRI2SwapBuffers(dpy, win, 0, 0, 0, &count);
 		MSG("DRI2SwapBuffers: count=%lu", count);
 		if (i > 0) {
