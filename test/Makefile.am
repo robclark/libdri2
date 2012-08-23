@@ -1,4 +1,4 @@
-lib_LTLIBRARIES = libdri2test.la
+noinst_LTLIBRARIES = libdri2test.la
 
 COMMON_SOURCES = dri2util.c
 COMMON_LIBADD  = @DRI2_LIBS@ 
