@@ -55,11 +55,12 @@ if test "x$TEST" = xyes; then
 
     # Check for individual driver implementations... not required for
     # libdri2, but is required for the test app to map the buffer..
-    PKG_CHECK_MODULES(NOUVEAU, libdrm_nouveau, [HAVE_NOUVEAU=yes], [HAVE_NOUVEAU=no])
-    if test "x$HAVE_NOUVEAU" = "xyes"; then
-        have_drm_driver=yes
-        AC_DEFINE(HAVE_NOUVEAU, 1, [Have nouveau support])
-    fi
+# libdrm_nouveau API has changed..
+#    PKG_CHECK_MODULES(NOUVEAU, libdrm_nouveau, [HAVE_NOUVEAU=yes], [HAVE_NOUVEAU=no])
+#    if test "x$HAVE_NOUVEAU" = "xyes"; then
+#        have_drm_driver=yes
+#        AC_DEFINE(HAVE_NOUVEAU, 1, [Have nouveau support])
+#    fi
     PKG_CHECK_MODULES(OMAP, libdrm_omap, [HAVE_OMAP=yes], [HAVE_OMAP=no])
     if test "x$HAVE_OMAP" = "xyes"; then
         have_drm_driver=yes
