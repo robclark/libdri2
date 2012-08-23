@@ -48,7 +48,7 @@ static void fill(char *virtual, int n, int width, int height, int stride)
     for (j = 0; j < height; j++) {
             uint32_t *fb_ptr = (uint32_t*)((char*)virtual + j * stride);
             for (i = 0; i < width; i++) {
-                    div_t d = div(n+i, width);
+                    div_t d = div(n+i+j, width);
                     fb_ptr[i] =
                             0x00130502 * (d.quot >> 6) +
                             0x000a1120 * (d.rem >> 6);
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 		CARD64 count;
 
 		char *buf = backend->prep(bufs[i % nbufs].hdl);
-		fill(buf, i, w, h, bufs[i % nbufs].dri2buf->pitch);
+		fill(buf, i, w, h, bufs[i % nbufs].dri2buf->pitch[0]);
 		backend->fini(bufs[i % nbufs].hdl);
 		DRI2SwapBuffers(dpy, win, 0, 0, 0, &count);
 		MSG("DRI2SwapBuffers: count=%lu", count);

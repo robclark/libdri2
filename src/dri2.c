@@ -363,10 +363,9 @@ DRI2DestroyDrawable(Display * dpy, XID drawable)
    SyncHandle();
 }
 
-DRI2Buffer *
-DRI2GetBuffers(Display * dpy, XID drawable,
-               int *width, int *height,
-               unsigned int *attachments, int count, int *outCount)
+static DRI2Buffer *
+getbuffers(Display *dpy, XID drawable, int *width, int *height,
+               unsigned int *attachments, int count, int *outCount, int dri2ReqType)
 {
    XExtDisplayInfo *info = DRI2FindDisplay(dpy);
    xDRI2GetBuffersReply rep;
@@ -374,18 +373,27 @@ DRI2GetBuffers(Display * dpy, XID drawable,
    DRI2Buffer *buffers;
    xDRI2Buffer repBuffer;
    CARD32 *p;
-   int i;
+   int i, nattachments;
+
+   /* DRI2GetBuffersWithFormat has interleaved attachment+format in
+    * attachments[] array, so length of array is 2x as long..
+    */
+   if (dri2ReqType == X_DRI2GetBuffersWithFormat) {
+          nattachments = 2 * count;
+   } else {
+          nattachments = count;
+   }
 
    XextCheckExtension(dpy, info, dri2ExtensionName, False);
 
    LockDisplay(dpy);
-   GetReqExtra(DRI2GetBuffers, count * 4, req);
+   GetReqExtra(DRI2GetBuffers, nattachments * 4, req);
    req->reqType = info->codes->major_opcode;
-   req->dri2ReqType = X_DRI2GetBuffers;
+   req->dri2ReqType = dri2ReqType;
    req->drawable = drawable;
    req->count = count;
    p = (CARD32 *) & req[1];
-   for (i = 0; i < count; i++)
+   for (i = 0; i < nattachments; i++)
       p[i] = attachments[i];
 
    if (!_XReply(dpy, (xReply *) & rep, 0, xFalse)) {
@@ -398,21 +406,16 @@ DRI2GetBuffers(Display * dpy, XID drawable,
    *height = rep.height;
    *outCount = rep.count;
 
-   buffers = Xmalloc(rep.count * sizeof buffers[0]);
-   if (buffers == NULL) {
-      _XEatData(dpy, rep.count * sizeof repBuffer);
-      UnlockDisplay(dpy);
-      SyncHandle();
-      return NULL;
-   }
-
+   buffers = calloc(rep.count, sizeof buffers[0]);
    for (i = 0; i < rep.count; i++) {
       _XReadPad(dpy, (char *) &repBuffer, sizeof repBuffer);
-      buffers[i].attachment = repBuffer.attachment;
-      buffers[i].name = repBuffer.name;
-      buffers[i].pitch = repBuffer.pitch;
-      buffers[i].cpp = repBuffer.cpp;
-      buffers[i].flags = repBuffer.flags;
+      if (buffers) {
+         buffers[i].attachment = repBuffer.attachment;
+         buffers[i].names[0] = repBuffer.name;
+         buffers[i].pitch[0] = repBuffer.pitch;
+         buffers[i].cpp = repBuffer.cpp;
+         buffers[i].flags = repBuffer.flags;
+      }
    }
 
    UnlockDisplay(dpy);
@@ -421,63 +424,22 @@ DRI2GetBuffers(Display * dpy, XID drawable,
    return buffers;
 }
 
+DRI2Buffer *
+DRI2GetBuffers(Display * dpy, XID drawable,
+               int *width, int *height,
+               unsigned int *attachments, int count, int *outCount)
+{
+       return getbuffers(dpy, drawable, width, height, attachments,
+                       count, outCount, X_DRI2GetBuffers);
+}
 
 DRI2Buffer *
 DRI2GetBuffersWithFormat(Display * dpy, XID drawable,
                          int *width, int *height,
                          unsigned int *attachments, int count, int *outCount)
 {
-   XExtDisplayInfo *info = DRI2FindDisplay(dpy);
-   xDRI2GetBuffersReply rep;
-   xDRI2GetBuffersReq *req;
-   DRI2Buffer *buffers;
-   xDRI2Buffer repBuffer;
-   CARD32 *p;
-   int i;
-
-   XextCheckExtension(dpy, info, dri2ExtensionName, False);
-
-   LockDisplay(dpy);
-   GetReqExtra(DRI2GetBuffers, count * (4 * 2), req);
-   req->reqType = info->codes->major_opcode;
-   req->dri2ReqType = X_DRI2GetBuffersWithFormat;
-   req->drawable = drawable;
-   req->count = count;
-   p = (CARD32 *) & req[1];
-   for (i = 0; i < (count * 2); i++)
-      p[i] = attachments[i];
-
-   if (!_XReply(dpy, (xReply *) & rep, 0, xFalse)) {
-      UnlockDisplay(dpy);
-      SyncHandle();
-      return NULL;
-   }
-
-   *width = rep.width;
-   *height = rep.height;
-   *outCount = rep.count;
-
-   buffers = Xmalloc(rep.count * sizeof buffers[0]);
-   if (buffers == NULL) {
-      _XEatData(dpy, rep.count * sizeof repBuffer);
-      UnlockDisplay(dpy);
-      SyncHandle();
-      return NULL;
-   }
-
-   for (i = 0; i < rep.count; i++) {
-      _XReadPad(dpy, (char *) &repBuffer, sizeof repBuffer);
-      buffers[i].attachment = repBuffer.attachment;
-      buffers[i].name = repBuffer.name;
-      buffers[i].pitch = repBuffer.pitch;
-      buffers[i].cpp = repBuffer.cpp;
-      buffers[i].flags = repBuffer.flags;
-   }
-
-   UnlockDisplay(dpy);
-   SyncHandle();
-
-   return buffers;
+       return getbuffers(dpy, drawable, width, height, attachments,
+                       count, outCount, X_DRI2GetBuffersWithFormat);
 }
 
 

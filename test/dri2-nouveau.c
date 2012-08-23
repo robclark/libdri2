@@ -52,7 +52,7 @@ static void setup(int fd)
 static void * init(DRI2Buffer *dri2buf)
 {
 	struct nouveau_bo *bo = NULL;
-	int ret = nouveau_bo_handle_ref(dev, dri2buf->name, &bo);
+	int ret = nouveau_bo_handle_ref(dev, dri2buf->names[0], &bo);
 	if (ret) {
 		ERROR_MSG("nouveau_bo_handle_ref failed: %d", ret);
 		return NULL;

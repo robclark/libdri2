@@ -48,7 +48,7 @@ static void setup(int fd)
 
 static void * init(DRI2Buffer *dri2buf)
 {
-	return omap_bo_from_name(dev, dri2buf->name);
+	return omap_bo_from_name(dev, dri2buf->names[0]);
 }
 
 static char * prep(void *hdl)

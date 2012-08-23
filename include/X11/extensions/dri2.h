@@ -43,8 +43,8 @@
 typedef struct
 {
    unsigned int attachment;
-   unsigned int name;
-   unsigned int pitch;
+   unsigned int names[3];    /* unused entries set to zero.. non-planar formats only use names[0] */
+   unsigned int pitch[3];    /* unused entries set to zero.. non-planar formats only use pitch[0] */
    unsigned int cpp;
    unsigned int flags;
 } DRI2Buffer;
